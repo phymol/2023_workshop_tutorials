@@ -7,8 +7,11 @@ import numpy as np
 import math
 from torch.utils.tensorboard import SummaryWriter
 import datetime
-# lennard-jones is quite easy to learn, to see interesting phenomenon
-# you may need to use very small numbers of nodes and layers
+# lennard-jones is quite easy to learn, so it will not
+# behave exactly like problems you may encounter later in research
+# and you may need to use very small numbers of nodes and layers
+# to see some types of behavior
+
 
 # things that have yet to be implemented in this example:
 # normalizing targets (very important!)
@@ -18,8 +21,15 @@ import datetime
 
 # note that this model is way too large for this problem.
 # I'm doing this to show overfitting
+
+# logs of each run are stored and can be viewed using tensorboard
+# run command in terminal:  tensorboard --logdir=runs --reload_multifile True
+# go to http://localhost:6006/ in your local browser: 
+# go to the custom_scalar tab to see a plot of loss/train and loss/val on the
+# same plot
+
 hparam_dict = {"num_basis_functions":30,
-               "nodes_per_layer":100,
+               "nodes_per_layer":5,
                "num_hidden_layers":6,
                "learning_rate":1e-2,
                "L2_regularization":1e-3,
@@ -244,14 +254,12 @@ with torch.no_grad():
 fig, ax = plt.subplots()
 ax.plot(x,y_ref, label ="target")
 ax.scatter(train_x,train_y, label ="training data")
+ax.set_xlabel("Interatomic distance (arbitrary units)")
+ax.set_ylabel("Energy (arbitrary units)")
 ax.plot(x,y_pred, label = "prediction")
 ax.legend()
 plt.savefig("lj_3_results.png")
 plt.show()
 plt.close()
 
-# run command in terminal:  tensorboard --logdir=runs --reload_multifile True
-# copy the link to your browser: http://localhost:6006/
-# go to the custom_scalar tab to see a plot of loss/train and loss/val on the
-# same plot
 

@@ -63,8 +63,8 @@ for X, y in train_dataloader:
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
-        num_basis_functions = 40
-        nodes_per_layer = 40
+        num_basis_functions = 30
+        nodes_per_layer = 5
         x_start = 0.9
         x_end = 3
         # gradients will not calculated for mu by default
@@ -72,6 +72,10 @@ class NeuralNetwork(nn.Module):
         self.sigma = (x_end - x_start)/num_basis_functions
         self.multilayer_perceptron = nn.Sequential(
             nn.Linear(num_basis_functions, nodes_per_layer),
+            nn.GELU(),
+            nn.Linear(nodes_per_layer, nodes_per_layer),
+            nn.GELU(),
+            nn.Linear(nodes_per_layer, nodes_per_layer),
             nn.GELU(),
             nn.Linear(nodes_per_layer, nodes_per_layer),
             nn.GELU(),
@@ -110,7 +114,7 @@ loss_fn = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
 def train(train_dataloader, model, loss_fn, optimizer):
-    """ does a single epoch """
+    """ does a single epoch, i.e. updates the parameters based on each batch of data """
     epoch_loss = 0.
     num_batches = len(train_dataloader.dataset)
     model.train() # turn on training mode
@@ -120,8 +124,7 @@ def train(train_dataloader, model, loss_fn, optimizer):
         pred = model(X)
         loss = loss_fn(pred, y)
         epoch_loss += loss.item()
-        # calculate the gradients of the loss function using backpropagation
-        loss.backward()
+        loss.backward()  # calculate the gradients of the loss function using backpropagation
         optimizer.step() # change the weights based on this batch of data
         optimizer.zero_grad() # reset all the gradients for the next batch calculation
         return epoch_loss/num_batches
@@ -156,6 +159,8 @@ fig, ax = plt.subplots()
 ax.plot(x,y_ref, label ="target")
 ax.scatter(train_x,train_y, label ="training data")
 ax.plot(x,y_pred, label = "prediction")
+ax.set_xlabel("Interatomic distance (arbitrary units)")
+ax.set_ylabel("Energy (arbitrary units)")
 ax.legend()
 plt.savefig("lj_1_results.png")
 plt.show()

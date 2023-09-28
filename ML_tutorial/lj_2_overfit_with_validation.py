@@ -3,7 +3,7 @@ from torch import nn
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
-import math
+
 
 # Get cpu, gpu or mps device for training.
 device = (
@@ -18,10 +18,8 @@ print(f"Using {device} device")
 
 ##################### 1) Dataset #############################
 class LJ_Dataset(Dataset):
-    def __init__(self, transform=None, target_transform=None):
-        self.transform = transform
-        self.target_transform = target_transform
-        self.n_samples = 16
+    def __init__(self):
+        self.n_samples = 40
         self.x_range = np.array([0.9, 2])
         # I set the dtype to float32 because the default for torch weights is also float32
         x_np = np.linspace(self.x_range[0],self.x_range[1],self.n_samples, dtype = np.float32)
@@ -41,15 +39,7 @@ class LJ_Dataset(Dataset):
         return self.n_samples
 
     def __getitem__(self, idx):
-        if self.transform:
-            sample_x = self.transform(self.x[idx])
-        else:
-            sample_x = self.x[idx]
-        if self.target_transform:
-            sample_target = self.target_transform(self.target[idx])
-        else:
-            sample_target = self.target[idx]
-        return sample_x, sample_target
+        return self.x[idx],  self.target[idx]
 
     
 my_dataset = LJ_Dataset()
@@ -77,8 +67,8 @@ for X, y in train_dataloader:
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
-        num_basis_functions = 40
-        nodes_per_layer = 40
+        num_basis_functions = 30
+        nodes_per_layer = 5
         x_start = 0.9
         x_end = 3
         # gradients will not calculated for mu by default
@@ -86,6 +76,10 @@ class NeuralNetwork(nn.Module):
         self.sigma = (x_end - x_start)/num_basis_functions
         self.multilayer_perceptron = nn.Sequential(
             nn.Linear(num_basis_functions, nodes_per_layer),
+            nn.GELU(),
+            nn.Linear(nodes_per_layer, nodes_per_layer),
+            nn.GELU(),
+            nn.Linear(nodes_per_layer, nodes_per_layer),
             nn.GELU(),
             nn.Linear(nodes_per_layer, nodes_per_layer),
             nn.GELU(),
@@ -104,9 +98,9 @@ class NeuralNetwork(nn.Module):
         
     def forward(self, x):
         # first convert position into a description of gaussian basis function 
-        x = self.gaussian(x)
+        descriptors = self.gaussian(x)
         # then push it through the neural network
-        pred = self.multilayer_perceptron(x)
+        pred = self.multilayer_perceptron(descriptors)
         return pred
         
 model = NeuralNetwork().to(device)
@@ -124,7 +118,7 @@ loss_fn = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
 def train(train_dataloader, model, loss_fn, optimizer):
-    """ does a single epoch """
+    """ does a single epoch, i.e. updates the parameters based on each batch of data """
     epoch_loss = 0.
     num_batches = len(train_dataloader.dataset)
     model.train() # turn on training mode
@@ -134,15 +128,13 @@ def train(train_dataloader, model, loss_fn, optimizer):
         pred = model(X)
         loss = loss_fn(pred, y)
         epoch_loss += loss.item()
-        # calculate the gradients of the loss function using backpropagation
-        loss.backward()
+        loss.backward()  # calculate the gradients of the loss function using backpropagation
         optimizer.step() # change the weights based on this batch of data
         optimizer.zero_grad() # reset all the gradients for the next batch calculation
         return epoch_loss/num_batches
 
 def val(dataloader, model, loss_fn):
     """ calculate the validation loss """
-    size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval() # turn on evaluation mode
     val_loss = 0.
@@ -154,7 +146,7 @@ def val(dataloader, model, loss_fn):
     return val_loss/ num_batches
 
     
-epochs = 100
+epochs = 300
 skip_report = 5
 train_loss_history = []
 val_loss_history = []
