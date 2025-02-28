@@ -43,6 +43,7 @@ class LJ_Dataset(Dataset):
 
     
 # note that in this example I use the whole dataset. Never do this! It's just to demonstrate overfitting.
+# Also the batchsize is the whole dataset, this is also wrong.
 my_dataset = LJ_Dataset()
 
 # Create data loader
